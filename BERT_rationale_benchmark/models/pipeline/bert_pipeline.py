@@ -121,7 +121,7 @@ def scores_per_word_from_scores_per_token(input, tokenizer, input_ids, scores_pe
         if start_idx >= len(score_per_char):
             break
         end_idx = end_idx + len(inp)
-        score_per_word.append(np.max(score_per_char[start_idx:end_idx]))
+        score_per_word.append(torch.max(torch.tensor(score_per_char[start_idx:end_idx])))
 
         # TODO: DELETE
         words_from_chars.append(''.join(input_ids_chars[start_idx:end_idx]))
@@ -238,7 +238,7 @@ def main():
     args = parser.parse_args()
     assert BATCH_FIRST
     os.makedirs(args.output_dir, exist_ok=True)
-
+    
     with open(args.model_params, 'r') as fp:
         logger.info(f'Loading model parameters from {args.model_params}')
         model_params = json.load(fp)
