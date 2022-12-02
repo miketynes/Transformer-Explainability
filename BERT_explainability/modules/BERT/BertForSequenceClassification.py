@@ -7,7 +7,7 @@ import torch.nn as nn
 from typing import List, Any
 import torch
 from BERT_rationale_benchmark.models.model_utils import PaddedSequence
-
+from transformers.modeling_outputs import SequenceClassifierOutput
 
 class BertForSequenceClassification(BertPreTrainedModel):
     def __init__(self, config):
