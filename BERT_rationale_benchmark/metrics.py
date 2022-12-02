@@ -665,10 +665,15 @@ def main():
         logging.info("No classification scores detected, skipping classification")
 
     pprint.pprint(scores)
-
-    if args.score_file:
-        with open(args.score_file, 'w') as of:
-            json.dump(scores, of, indent=4, sort_keys=True)
+    
+    #if args.score_file:
+    # save metrics with results
+    outpath, basename = os.path.split(args.results)
+    k = basename.split('.')[0].split('_')[-1]
+    outname = f'metrics_{k}.json'
+    score_file = os.path.join(outpath, outname)
+    with open(score_file, 'w+') as of:
+        json.dump(scores, of, indent=4, sort_keys=True)
 
 if __name__ == '__main__':
     main()
