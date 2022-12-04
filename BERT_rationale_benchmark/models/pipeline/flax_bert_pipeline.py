@@ -448,7 +448,7 @@ def main():
                                                                        num_labels=len(evidence_classes))
         sd = torch.load(model_save_file)
         sd_flat = flatten_dict(sd)
-        sd_flat = {k: v.cpu() for k, v in sd_flat.items}
+        sd_flat = {k: v.cpu() for k, v in sd_flat.items()}
         sd = unflatten_dict(sd_flat)
         flax_model.params = flax_bert_params_from_pt(sd, 768, 12)
         flax_generator = FlaxGenerator(flax_model)
