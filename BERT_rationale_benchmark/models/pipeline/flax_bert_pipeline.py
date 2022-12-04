@@ -444,7 +444,7 @@ def main():
         explanations_orig_lrp = Generator(orig_lrp_classifier)
         method = "flax"
         method_folder = {"flax": "flax"}
-        method_expl = {"flax": explanations.generate_LRP}
+        #method_expl = {"flax": explanations.generate_LRP}
         flax_model = FlaxBertForSequenceClassification.from_pretrained(model_params['bert_dir'],
                                                                        num_labels=len(evidence_classes))
         sd = torch.load(model_save_file)
@@ -481,13 +481,13 @@ def main():
                 is_classification_correct = 1 if preds.argmax(dim=1) == targets else 0
                 target_idx = targets.item()
                 input_ids, attention_masks = map(lambda t: jnp.array(t.cpu()), (input_ids, attention_masks))
-                cam_target = method_expl[method](input_ids=input_ids, attention_mask=attention_masks, index=target_idx)[0]
+                cam_target = flax_generator.generate_LRP(input_ids=input_ids, attention_mask=attention_masks, index=target_idx)[0]
                 cam_target = cam_target.clamp(min=0)
                 generate(text, cam_target,
                          (os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.tex').format(
                              method_folder[method], j, classification, is_classification_correct)))
                 if method in ["flax"]:
-                    cam_false_class = method_expl[method](input_ids=input_ids, attention_mask=attention_masks, index=1-target_idx)[0]
+                    cam_false_class = flax_generator.generate_LRP(input_ids=input_ids, attention_mask=attention_masks, index=1-target_idx)[0]
                     cam_false_class = cam_false_class.clamp(min=0)
                     generate(text, cam_false_class,
                          (os.path.join(args.output_dir, '{0}/{1}_CF.tex').format(
