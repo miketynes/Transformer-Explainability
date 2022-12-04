@@ -36,6 +36,7 @@ from BERT_flax.modeling_flax_bert import FlaxBertForSequenceClassification
 from BERT_flax.loading_utils import flax_bert_params_from_pt
 from BERT_flax.explanation_generator import Generator as FlaxGenerator
 from flax.traverse_util import flatten_dict, unflatten_dict
+import jax.numpy as jnp
 
 logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -479,7 +480,7 @@ def main():
                 classification = "neg" if targets.item() == 0 else "pos"
                 is_classification_correct = 1 if preds.argmax(dim=1) == targets else 0
                 target_idx = targets.item()
-                import pdb; pdb.set_trace()
+                input_ids, attention_masks = map(lambda t: jnp.array(t.cpu()), (input_ids, attention_masks))
                 cam_target = method_expl[method](input_ids=input_ids, attention_mask=attention_masks, index=target_idx)[0]
                 cam_target = cam_target.clamp(min=0)
                 generate(text, cam_target,
