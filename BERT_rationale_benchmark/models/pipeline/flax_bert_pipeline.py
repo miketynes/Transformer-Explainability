@@ -32,6 +32,10 @@ from transformers import BertForSequenceClassification
 
 from collections import OrderedDict
 
+from BERT_flax.modeling_flax_bert import FlaxBertForSequenceClassification
+from BERT_flax.loading_utils import flax_bert_params_from_pt
+from BERT_flax.explanation_generator import Generator as FlaxGenerator
+
 logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
 logger = logging.getLogger(__name__)
 # let's make this more or less deterministic (not resistent to restarts)
@@ -436,16 +440,13 @@ def main():
         # explainability
         explanations = Generator(test_classifier)
         explanations_orig_lrp = Generator(orig_lrp_classifier)
-        method = "transformer_attribution"
-        method_folder = {"transformer_attribution": "ours", "partial_lrp": "partial_lrp", "last_attn": "last_attn",
-                         "attn_gradcam": "attn_gradcam", "lrp": "lrp", "rollout": "rollout",
-                         "ground_truth": "ground_truth", "generate_all": "generate_all"}
-        method_expl = {"transformer_attribution": explanations.generate_LRP,
-                       "partial_lrp": explanations_orig_lrp.generate_LRP_last_layer,
-                       "last_attn": explanations_orig_lrp.generate_attn_last_layer,
-                       "attn_gradcam": explanations_orig_lrp.generate_attn_gradcam,
-                       "lrp": explanations_orig_lrp.generate_full_lrp,
-                       "rollout": explanations_orig_lrp.generate_rollout}
+        method = "flax"
+        method_folder = {"flax": "flax"}
+        method_expl = {"flax": explanations.generate_LRP}
+        flax_model = FlaxBertForSequenceClassification.from_pretrained(model_params['bert_dir'],
+                                                                       num_labels=len(evidence_classes))
+        flax_model.params = flax_bert_params_from_pt(torch.load(model_save_file), 768, 12)
+        flax_generator = FlaxGenerator(flax_model)
 
         os.makedirs(os.path.join(args.output_dir, method_folder[method]), exist_ok=True)
 
@@ -469,91 +470,17 @@ def main():
             for s in batch_elements:
                 doc_name = extract_docid_from_dataset_element(s)
                 inp = documents[doc_name].split()
-                classification = "neg" if targets.item() == 0 else "pos"
-                is_classification_correct = 1 if preds.argmax(dim=1) == targets else 0
-                if method == "generate_all":
-                    file_name ="{0}_{1}_{2}.tex".format(j, classification, is_classification_correct)
-                    GT_global = os.path.join(args.output_dir, '{0}/visual_results_{1}.pdf').format(
-                             method_folder["ground_truth"], j)
-                    GT_ours = os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.pdf').format(
-                             method_folder["transformer_attribution"], j, classification, is_classification_correct)
-                    CF_ours = os.path.join(args.output_dir, '{0}/{1}_CF.pdf').format(
-                             method_folder["transformer_attribution"], j)
-                    GT_partial = os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.pdf').format(
-                        method_folder["partial_lrp"], j, classification, is_classification_correct)
-                    CF_partial = os.path.join(args.output_dir, '{0}/{1}_CF.pdf').format(
-                        method_folder["partial_lrp"], j)
-                    GT_gradcam = os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.pdf').format(
-                        method_folder["attn_gradcam"], j, classification, is_classification_correct)
-                    CF_gradcam = os.path.join(args.output_dir, '{0}/{1}_CF.pdf').format(
-                        method_folder["attn_gradcam"], j)
-                    GT_lrp = os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.pdf').format(
-                        method_folder["lrp"], j, classification, is_classification_correct)
-                    CF_lrp = os.path.join(args.output_dir, '{0}/{1}_CF.pdf').format(
-                        method_folder["lrp"], j)
-                    GT_lastattn = os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.pdf').format(
-                        method_folder["last_attn"], j, classification, is_classification_correct)
-                    GT_rollout = os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.pdf').format(
-                        method_folder["rollout"], j, classification, is_classification_correct)
-                    with open(file_name, 'w') as f:
-                        f.write(r'''\documentclass[varwidth]{standalone}
-\usepackage{color}
-\usepackage{tcolorbox}
-\usepackage{CJK}
-\tcbset{width=0.9\textwidth,boxrule=0pt,colback=red,arc=0pt,auto outer arc,left=0pt,right=0pt,boxsep=5pt}
-\begin{document}
-\begin{CJK*}{UTF8}{gbsn}
-{\setlength{\fboxsep}{0pt}\colorbox{white!0}{\parbox{0.9\textwidth}{
-    \setlength{\tabcolsep}{2pt} % Default value: 6pt
-    \begin{tabular}{ccc}
-        \includegraphics[width=0.32\linewidth]{''' + GT_global + '''}&
-        \includegraphics[width=0.32\linewidth]{''' + GT_ours + '''}&
-        \includegraphics[width=0.32\linewidth]{''' + CF_ours + '''}\\\\
-        (a) & (b) & (c)\\\\
-        \includegraphics[width=0.32\linewidth]{''' + GT_partial + '''}&
-        \includegraphics[width=0.32\linewidth]{''' + CF_partial + '''}&
-        \includegraphics[width=0.32\linewidth]{''' + GT_gradcam + '''}\\\\
-        (d) & (e) & (f)\\\\
-        \includegraphics[width=0.32\linewidth]{''' + CF_gradcam + '''}&
-        \includegraphics[width=0.32\linewidth]{''' + GT_lrp + '''}&
-        \includegraphics[width=0.32\linewidth]{''' + CF_lrp + '''}\\\\
-        (g) & (h) & (i)\\\\
-        \includegraphics[width=0.32\linewidth]{''' + GT_lastattn + '''}&
-        \includegraphics[width=0.32\linewidth]{''' + GT_rollout + '''}&\\\\
-        (j) & (k)&\\\\
-    \end{tabular}
-}}}
-\end{CJK*}
-\end{document}
-)''')
-                    j += 1
-                    break
-
-
-                if method == "ground_truth":
-                    inp_cropped = get_input_words(inp, tokenizer, input_ids[0])
-                    cam = torch.zeros(len(inp_cropped))
-                    for evidence in extract_evidence_from_dataset_element(s):
-                        start_idx = evidence.start_token
-                        if start_idx >= len(cam):
-                            break
-                        end_idx = evidence.end_token
-                        cam[start_idx:end_idx] = 1
-                    generate(inp_cropped, cam,
-                             (os.path.join(args.output_dir, '{0}/visual_results_{1}.tex').format(method_folder[method],
-                                                                                                 j)), color="green")
-                    j = j + 1
-                    break
                 text = tokenizer.convert_ids_to_tokens(input_ids[0])
                 classification = "neg" if targets.item() == 0 else "pos"
                 is_classification_correct = 1 if preds.argmax(dim=1) == targets else 0
                 target_idx = targets.item()
+                import pdb; pdb.set_trace()
                 cam_target = method_expl[method](input_ids=input_ids, attention_mask=attention_masks, index=target_idx)[0]
                 cam_target = cam_target.clamp(min=0)
                 generate(text, cam_target,
                          (os.path.join(args.output_dir, '{0}/{1}_GT_{2}_{3}.tex').format(
                              method_folder[method], j, classification, is_classification_correct)))
-                if method in ["transformer_attribution", "partial_lrp", "attn_gradcam", "lrp"]:
+                if method in ["flax"]:
                     cam_false_class = method_expl[method](input_ids=input_ids, attention_mask=attention_masks, index=1-target_idx)[0]
                     cam_false_class = cam_false_class.clamp(min=0)
                     generate(text, cam_false_class,
