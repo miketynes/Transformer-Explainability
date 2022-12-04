@@ -272,7 +272,7 @@ def main():
             interned_documents[d] = encoding
         torch.save((interned_documents), cache)
 
-    #evidence_classifier = evidence_classifier.cuda()
+    evidence_classifier = evidence_classifier.cuda()
     optimizer = None
     scheduler = None
 
@@ -286,136 +286,136 @@ def main():
     epoch_save_file = os.path.join(evidence_classifier_output_dir, 'classifier_epoch_data.pt')
 
     device = next(evidence_classifier.parameters()).device
-    # if optimizer is None:
-    #     optimizer = torch.optim.Adam(evidence_classifier.parameters(), lr=model_params['evidence_classifier']['lr'])
-    # criterion = nn.CrossEntropyLoss(reduction='none')
-    # batch_size = model_params['evidence_classifier']['batch_size']
-    # epochs = model_params['evidence_classifier']['epochs']
-    # patience = model_params['evidence_classifier']['patience']
-    # max_grad_norm = model_params['evidence_classifier'].get('max_grad_norm', None)
-    #
-    # class_labels = [k for k, v in sorted(evidence_classes.items())]
+    if optimizer is None:
+        optimizer = torch.optim.Adam(evidence_classifier.parameters(), lr=model_params['evidence_classifier']['lr'])
+    criterion = nn.CrossEntropyLoss(reduction='none')
+    batch_size = model_params['evidence_classifier']['batch_size']
+    epochs = model_params['evidence_classifier']['epochs']
+    patience = model_params['evidence_classifier']['patience']
+    max_grad_norm = model_params['evidence_classifier'].get('max_grad_norm', None)
 
-    # results = {
-    #     'train_loss': [],
-    #     'train_f1': [],
-    #     'train_acc': [],
-    #     'val_loss': [],
-    #     'val_f1': [],
-    #     'val_acc': [],
-    # }
-    # best_epoch = -1
-    # best_val_acc = 0
-    # best_val_loss = float('inf')
-    # best_model_state_dict = None
-    # start_epoch = 0
-    # epoch_data = {}
-    # if os.path.exists(epoch_save_file):
-    #     logging.info(f'Restoring model from {model_save_file}')
-    #     evidence_classifier.load_state_dict(torch.load(model_save_file))
-    #     epoch_data = torch.load(epoch_save_file)
-    #     start_epoch = epoch_data['epoch'] + 1
-    #     # handle finishing because patience was exceeded or we didn't get the best final epoch
-    #     if bool(epoch_data.get('done', 0)):
-    #         start_epoch = epochs
-    #     results = epoch_data['results']
-    #     best_epoch = start_epoch
-    #     best_model_state_dict = OrderedDict({k: v.cpu() for k, v in evidence_classifier.state_dict().items()})
-    #     logging.info(f'Restoring training from epoch {start_epoch}')
-    # logging.info(f'Training evidence classifier from epoch {start_epoch} until epoch {epochs}')
-    # optimizer.zero_grad()
-    # for epoch in range(start_epoch, epochs):
-    #     epoch_train_data = random.sample(train, k=len(train))
-    #     epoch_train_loss = 0
-    #     epoch_training_acc = 0
-    #     evidence_classifier.train()
-    #     logging.info(
-    #         f'Training with {len(epoch_train_data) // batch_size} batches with {len(epoch_train_data)} examples')
-    #     for batch_start in range(0, len(epoch_train_data), batch_size):
-    #         batch_elements = epoch_train_data[batch_start:min(batch_start + batch_size, len(epoch_train_data))]
-    #         targets = [evidence_classes[s.classification] for s in batch_elements]
-    #         targets = torch.tensor(targets, dtype=torch.long, device=device)
-    #         samples_encoding = [interned_documents[extract_docid_from_dataset_element(s)] for s in batch_elements]
-    #         input_ids = torch.stack([samples_encoding[i]['input_ids'] for i in range(len(samples_encoding))]).squeeze(
-    #             1).to(device)
-    #         attention_masks = torch.stack(
-    #             [samples_encoding[i]['attention_mask'] for i in range(len(samples_encoding))]).squeeze(1).to(device)
-    #         preds = evidence_classifier(input_ids=input_ids, attention_mask=attention_masks)[0]
-    #         epoch_training_acc += accuracy_score(preds.argmax(dim=1).cpu(), targets.cpu(), normalize=False)
-    #         loss = criterion(preds, targets.to(device=preds.device)).sum()
-    #         epoch_train_loss += loss.item()
-    #         loss.backward()
-    #         assert loss == loss  # for nans
-    #         if max_grad_norm:
-    #             torch.nn.utils.clip_grad_norm_(evidence_classifier.parameters(), max_grad_norm)
-    #         optimizer.step()
-    #         if scheduler:
-    #             scheduler.step()
-    #         optimizer.zero_grad()
-    #     epoch_train_loss /= len(epoch_train_data)
-    #     epoch_training_acc /= len(epoch_train_data)
-    #     assert epoch_train_loss == epoch_train_loss  # for nans
-    #     results['train_loss'].append(epoch_train_loss)
-    #     logging.info(f'Epoch {epoch} training loss {epoch_train_loss}')
-    #     logging.info(f'Epoch {epoch} training accuracy {epoch_training_acc}')
+    class_labels = [k for k, v in sorted(evidence_classes.items())]
 
-        # with torch.no_grad():
-        #     epoch_val_loss = 0
-        #     epoch_val_acc = 0
-        #     epoch_val_data = random.sample(val, k=len(val))
-        #     evidence_classifier.eval()
-        #     val_batch_size = 32
-        #     logging.info(
-        #         f'Validating with {len(epoch_val_data) // val_batch_size} batches with {len(epoch_val_data)} examples')
-        #     for batch_start in range(0, len(epoch_val_data), val_batch_size):
-        #         batch_elements = epoch_val_data[batch_start:min(batch_start + val_batch_size, len(epoch_val_data))]
-        #         targets = [evidence_classes[s.classification] for s in batch_elements]
-        #         targets = torch.tensor(targets, dtype=torch.long, device=device)
-        #         samples_encoding = [interned_documents[extract_docid_from_dataset_element(s)] for s in batch_elements]
-        #         input_ids = torch.stack(
-        #             [samples_encoding[i]['input_ids'] for i in range(len(samples_encoding))]).squeeze(1).to(device)
-        #         attention_masks = torch.stack(
-        #             [samples_encoding[i]['attention_mask'] for i in range(len(samples_encoding))]).squeeze(1).to(
-        #             device)
-        #         preds = evidence_classifier(input_ids=input_ids, attention_mask=attention_masks)[0]
-        #         epoch_val_acc += accuracy_score(preds.argmax(dim=1).cpu(), targets.cpu(), normalize=False)
-        #         loss = criterion(preds, targets.to(device=preds.device)).sum()
-        #         epoch_val_loss += loss.item()
-        #
-        #     epoch_val_loss /= len(val)
-        #     epoch_val_acc /= len(val)
-        #     results["val_acc"].append(epoch_val_acc)
-        #     results["val_loss"] = epoch_val_loss
-        #
-        #     logging.info(f'Epoch {epoch} val loss {epoch_val_loss}')
-        #     logging.info(f'Epoch {epoch} val acc {epoch_val_acc}')
-        #
-        #     if epoch_val_acc > best_val_acc or (epoch_val_acc == best_val_acc and epoch_val_loss < best_val_loss):
-        #         best_model_state_dict = OrderedDict({k: v.cpu() for k, v in evidence_classifier.state_dict().items()})
-        #         best_epoch = epoch
-        #         best_val_acc = epoch_val_acc
-        #         best_val_loss = epoch_val_loss
-        #         epoch_data = {
-        #             'epoch': epoch,
-        #             'results': results,
-        #             'best_val_acc': best_val_acc,
-        #             'done': 0,
-        #         }
-        #         torch.save(evidence_classifier.state_dict(), model_save_file)
-        #         torch.save(epoch_data, epoch_save_file)
-        #         logging.debug(f'Epoch {epoch} new best model with val accuracy {epoch_val_acc}')
-        # if epoch - best_epoch > patience:
-        #     logging.info(f'Exiting after epoch {epoch} due to no improvement')
-        #     epoch_data['done'] = 1
-        #     torch.save(epoch_data, epoch_save_file)
-        #     break
-    #
-    # epoch_data['done'] = 1
-    # epoch_data['results'] = results
-    # torch.save(epoch_data, epoch_save_file)
-    # evidence_classifier.load_state_dict(best_model_state_dict)
-    # evidence_classifier = evidence_classifier.to(device=device)
-    # evidence_classifier.eval()
+    results = {
+        'train_loss': [],
+        'train_f1': [],
+        'train_acc': [],
+        'val_loss': [],
+        'val_f1': [],
+        'val_acc': [],
+    }
+    best_epoch = -1
+    best_val_acc = 0
+    best_val_loss = float('inf')
+    best_model_state_dict = None
+    start_epoch = 0
+    epoch_data = {}
+    if os.path.exists(epoch_save_file):
+        logging.info(f'Restoring model from {model_save_file}')
+        evidence_classifier.load_state_dict(torch.load(model_save_file))
+        epoch_data = torch.load(epoch_save_file)
+        start_epoch = epoch_data['epoch'] + 1
+        # handle finishing because patience was exceeded or we didn't get the best final epoch
+        if bool(epoch_data.get('done', 0)):
+            start_epoch = epochs
+        results = epoch_data['results']
+        best_epoch = start_epoch
+        best_model_state_dict = OrderedDict({k: v.cpu() for k, v in evidence_classifier.state_dict().items()})
+        logging.info(f'Restoring training from epoch {start_epoch}')
+    logging.info(f'Training evidence classifier from epoch {start_epoch} until epoch {epochs}')
+    optimizer.zero_grad()
+    for epoch in range(start_epoch, epochs):
+        epoch_train_data = random.sample(train, k=len(train))
+        epoch_train_loss = 0
+        epoch_training_acc = 0
+        evidence_classifier.train()
+        logging.info(
+            f'Training with {len(epoch_train_data) // batch_size} batches with {len(epoch_train_data)} examples')
+        for batch_start in range(0, len(epoch_train_data), batch_size):
+            batch_elements = epoch_train_data[batch_start:min(batch_start + batch_size, len(epoch_train_data))]
+            targets = [evidence_classes[s.classification] for s in batch_elements]
+            targets = torch.tensor(targets, dtype=torch.long, device=device)
+            samples_encoding = [interned_documents[extract_docid_from_dataset_element(s)] for s in batch_elements]
+            input_ids = torch.stack([samples_encoding[i]['input_ids'] for i in range(len(samples_encoding))]).squeeze(
+                1).to(device)
+            attention_masks = torch.stack(
+                [samples_encoding[i]['attention_mask'] for i in range(len(samples_encoding))]).squeeze(1).to(device)
+            preds = evidence_classifier(input_ids=input_ids, attention_mask=attention_masks)[0]
+            epoch_training_acc += accuracy_score(preds.argmax(dim=1).cpu(), targets.cpu(), normalize=False)
+            loss = criterion(preds, targets.to(device=preds.device)).sum()
+            epoch_train_loss += loss.item()
+            loss.backward()
+            assert loss == loss  # for nans
+            if max_grad_norm:
+                torch.nn.utils.clip_grad_norm_(evidence_classifier.parameters(), max_grad_norm)
+            optimizer.step()
+            if scheduler:
+                scheduler.step()
+            optimizer.zero_grad()
+        epoch_train_loss /= len(epoch_train_data)
+        epoch_training_acc /= len(epoch_train_data)
+        assert epoch_train_loss == epoch_train_loss  # for nans
+        results['train_loss'].append(epoch_train_loss)
+        logging.info(f'Epoch {epoch} training loss {epoch_train_loss}')
+        logging.info(f'Epoch {epoch} training accuracy {epoch_training_acc}')
+
+        with torch.no_grad():
+            epoch_val_loss = 0
+            epoch_val_acc = 0
+            epoch_val_data = random.sample(val, k=len(val))
+            evidence_classifier.eval()
+            val_batch_size = 32
+            logging.info(
+                f'Validating with {len(epoch_val_data) // val_batch_size} batches with {len(epoch_val_data)} examples')
+            for batch_start in range(0, len(epoch_val_data), val_batch_size):
+                batch_elements = epoch_val_data[batch_start:min(batch_start + val_batch_size, len(epoch_val_data))]
+                targets = [evidence_classes[s.classification] for s in batch_elements]
+                targets = torch.tensor(targets, dtype=torch.long, device=device)
+                samples_encoding = [interned_documents[extract_docid_from_dataset_element(s)] for s in batch_elements]
+                input_ids = torch.stack(
+                    [samples_encoding[i]['input_ids'] for i in range(len(samples_encoding))]).squeeze(1).to(device)
+                attention_masks = torch.stack(
+                    [samples_encoding[i]['attention_mask'] for i in range(len(samples_encoding))]).squeeze(1).to(
+                    device)
+                preds = evidence_classifier(input_ids=input_ids, attention_mask=attention_masks)[0]
+                epoch_val_acc += accuracy_score(preds.argmax(dim=1).cpu(), targets.cpu(), normalize=False)
+                loss = criterion(preds, targets.to(device=preds.device)).sum()
+                epoch_val_loss += loss.item()
+
+            epoch_val_loss /= len(val)
+            epoch_val_acc /= len(val)
+            results["val_acc"].append(epoch_val_acc)
+            results["val_loss"] = epoch_val_loss
+
+            logging.info(f'Epoch {epoch} val loss {epoch_val_loss}')
+            logging.info(f'Epoch {epoch} val acc {epoch_val_acc}')
+
+            if epoch_val_acc > best_val_acc or (epoch_val_acc == best_val_acc and epoch_val_loss < best_val_loss):
+                best_model_state_dict = OrderedDict({k: v.cpu() for k, v in evidence_classifier.state_dict().items()})
+                best_epoch = epoch
+                best_val_acc = epoch_val_acc
+                best_val_loss = epoch_val_loss
+                epoch_data = {
+                    'epoch': epoch,
+                    'results': results,
+                    'best_val_acc': best_val_acc,
+                    'done': 0,
+                }
+                torch.save(evidence_classifier.state_dict(), model_save_file)
+                torch.save(epoch_data, epoch_save_file)
+                logging.debug(f'Epoch {epoch} new best model with val accuracy {epoch_val_acc}')
+        if epoch - best_epoch > patience:
+            logging.info(f'Exiting after epoch {epoch} due to no improvement')
+            epoch_data['done'] = 1
+            torch.save(epoch_data, epoch_save_file)
+            break
+
+    epoch_data['done'] = 1
+    epoch_data['results'] = results
+    torch.save(epoch_data, epoch_save_file)
+    evidence_classifier.load_state_dict(best_model_state_dict)
+    evidence_classifier = evidence_classifier.to(device=device)
+    evidence_classifier.eval()
 
     # test
 
