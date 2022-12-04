@@ -51,7 +51,7 @@ from transformers.modeling_flax_utils import (
 from transformers.utils import ModelOutput, add_start_docstrings, add_start_docstrings_to_model_forward, logging
 from transformers import BertConfig
 
-import bert_explainability_layers as ours
+import BERT_flax.bert_explainability_layers as ours
 
 logger = logging.get_logger(__name__)
 
