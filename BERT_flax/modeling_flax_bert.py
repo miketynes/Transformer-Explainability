@@ -415,7 +415,7 @@ class FlaxBertSelfAttention(nn.Module):
             dtype=self.dtype,
             precision=None,
         )
-        attn_weights = self.perturb("attn_weights", attn_weights)
+        #attn_weights = self.perturb("attn_weights", attn_weights)
 
         # Mask heads if we want to
         if layer_head_mask is not None:
@@ -1238,7 +1238,7 @@ class FlaxBertPreTrainedModel(FlaxPreTrainedModel):
             )
 
         random_params = module_init_outputs["params"]
-        self.perturbs =  module_init_outputs["perturbations"]
+        #self.perturbs =  module_init_outputs["perturbations"]
 
         if params is not None:
             random_params = flatten_dict(unfreeze(random_params))
@@ -1313,7 +1313,9 @@ class FlaxBertPreTrainedModel(FlaxPreTrainedModel):
         if dropout_rng is not None:
             rngs["dropout"] = dropout_rng
 
-        inputs = {"params": params or self.params, "perturbations": perturbs or self.perturbs}
+        inputs = {"params": params or self.params, 
+                 #"perturbations": perturbs or self.perturbs
+                 }
 
         if self.config.add_cross_attention:
             # if past_key_values are passed then cache is already initialized a private flag init_cache has to be passed
@@ -1400,7 +1402,9 @@ class FlaxBertPreTrainedModel(FlaxPreTrainedModel):
         if dropout_rng is not None:
             rngs["dropout"] = dropout_rng
 
-        inputs = {"params": params or self.params, "perturbations": self.perturbs}
+        inputs = {"params": params or self.params, 
+                 #"perturbations": self.perturbs
+                 }
 
         if self.config.add_cross_attention:
             # if past_key_values are passed then cache is already initialized a private flag init_cache has to be passed
