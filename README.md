@@ -1,6 +1,10 @@
 # JAX reproduction of results from [Transformer Interpretability Beyond Attention Visualization](https://arxiv.org/abs/2012.09838) [CVPR 2021]
 
-Here we integrated our [jax reimplementation](https://github.com/miketynes/JAX-Transformer-Explainability) in the code that generated the results from Chefer *et al.*'s original work. We focused only on reproducing their results on BERT. The relevant code from our jax reimplementation is found in the `BERT_flax` directory. The integration of this code with the BERT experiments is in `BERT_rationale_benchmark/models/pipeline/flax_bert_pipeline.py`
+Here we integrated our [jax reimplementation](https://github.com/miketynes/JAX-Transformer-Explainability) in the code that generated the results from Chefer *et al.*'s original work. We focused only on reproducing their results on BERT. 
+
+### Our additions: 
+* The relevant code from our jax reimplementation is found in the [BERT_flax](BERT_flax) directory. 
+* The integration of this code with the BERT experiments is in [BERT_rationale_benchmark/models/pipeline/flax_bert_pipeline.py](BERT_rationale_benchmark/models/pipeline/flax_bert_pipeline.py)
 
 The instructions for reproducing Chefer *et al.*'s BERT results are below, with additional instructions for producing our JAX results. 
 
